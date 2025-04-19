@@ -15,7 +15,7 @@ from pyemvue.device import (
     VueDeviceChannelUsage,
     VueUsageDevice,
 )
-from pyemvue.enums import Scale
+from pyemvue.enums import Scale, Unit
 import requests
 import voluptuous as vol
 
@@ -27,7 +27,7 @@ from homeassistant.helpers import entity_registry as er
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, ENABLE_1D, ENABLE_1M, ENABLE_1MON, ENABLE_1S, VUE_DATA
+from .const import DOMAIN, ENABLE_1D, ENABLE_1M, ENABLE_1MON, ENABLE_1S, ENABLE_1S_AMPS, VUE_DATA
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -36,6 +36,7 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Required(CONF_EMAIL): cv.string,
                 vol.Required(CONF_PASSWORD): cv.string,
                 vol.Optional(ENABLE_1S, default=False): cv.boolean,
+                vol.Optional(ENABLE_1S_AMPS, default=False): cv.boolean,
                 vol.Optional(ENABLE_1M, default=True): cv.boolean,
                 vol.Optional(ENABLE_1D, default=True): cv.boolean,
                 vol.Optional(ENABLE_1MON, default=True): cv.boolean,
@@ -72,6 +73,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
                 CONF_EMAIL: conf[CONF_EMAIL],
                 CONF_PASSWORD: conf[CONF_PASSWORD],
                 ENABLE_1S: conf[ENABLE_1S],
+                ENABLE_1S_AMPS: conf[ENABLE_1S_AMPS],
                 ENABLE_1M: conf[ENABLE_1M],
                 ENABLE_1D: conf[ENABLE_1D],
                 ENABLE_1MON: conf[ENABLE_1MON],
@@ -210,6 +212,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             )
             await coordinator_1sec.async_config_entry_first_refresh()
             _LOGGER.info("1sec Update data: %s", coordinator_1sec.data)
+        coordinator_1sec_amps = None
+        if ENABLE_1S_AMPS not in options_data or options_data[ENABLE_1S_AMPS]:
+            coordinator_1sec_amps = DataUpdateCoordinator(
+                hass,
+                _LOGGER,
+                # Name of the data. For logging purposes.
+                name="sensor",
+                update_method=async_update_data_1sec,
+                # Polling interval. Will only be polled if there are subscribers.
+                update_interval=timedelta(seconds=1),
+            )
+            await coordinator_1sec_amps.async_config_entry_first_refresh()
+            _LOGGER.info("1sec AMPS Update data: %s", coordinator_1sec_amps.data)
         coordinator_1min = None
         if ENABLE_1M not in options_data or options_data[ENABLE_1M]:
             coordinator_1min = DataUpdateCoordinator(
@@ -362,6 +377,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][entry.entry_id] = {
         VUE_DATA: vue,
         "coordinator_1sec": coordinator_1sec,
+        "coordinator_1sec_amps": coordinator_1sec_amps,
         "coordinator_1min": coordinator_1min,
         "coordinator_1mon": coordinator_1mon,
         "coordinator_day_sensor": coordinator_day_sensor,
@@ -395,22 +411,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 async def update_sensors(vue: PyEmVue, scales: list[str]):
     """Fetch data from API endpoint."""
     try:
-        # Note: asyncio.TimeoutError and aiohttp.ClientError are already
-        # handled by the data update coordinator.
         data = {}
         loop = asyncio.get_event_loop()
         for scale in scales:
             utcnow = datetime.now(timezone.utc)
+            # Use AmpHours for 1S scale to calculate current
+            unit = Unit.AMPHOURS.value if scale == Scale.SECOND.value else Unit.KWH.value
             usage_dict = await loop.run_in_executor(
-                None, vue.get_device_list_usage, DEVICE_GIDS, utcnow, scale
+                None, vue.get_device_list_usage, DEVICE_GIDS, utcnow, scale, unit
             )
-            if not usage_dict:
-                _LOGGER.warning(
-                    "No channels found during update for scale %s. Retrying", scale
-                )
-                usage_dict = await loop.run_in_executor(
-                    None, vue.get_device_list_usage, DEVICE_GIDS, utcnow, scale
-                )
             if usage_dict:
                 flattened, data_time = flatten_usage_data(usage_dict, scale)
                 await parse_flattened_usage_data(
@@ -420,11 +429,23 @@ async def update_sensors(vue: PyEmVue, scales: list[str]):
                     utcnow,
                     data_time,
                 )
+
+                # Calculate amperage if scale is SECOND
+                if scale == Scale.SECOND.value:
+                    for identifier, channel_data in data.items():
+                        if "usage" in channel_data:  # usage will now be in AmpHours
+                            channel_data["amperage"] = round(channel_data["usage"] * 3600, 2)
+                            # Add a unique_id to the 1s_amperage sensor 
+                            device_gid, channel_gid, _ = identifier.split("-")
+                            unique_id = f"{device_gid}-{channel_gid}-1s-amperage"
+                            channel_data["unique_id"] = unique_id
+                        else:
+                            channel_data["amperage"] = None
             else:
                 raise UpdateFailed(f"No channels found during update for scale {scale}")
 
         return data
-    except Exception as err:
+    except Exception as err: 
         _LOGGER.error("Error communicating with Emporia API: %s", err)
         raise UpdateFailed(f"Error communicating with Emporia API: {err}")
 

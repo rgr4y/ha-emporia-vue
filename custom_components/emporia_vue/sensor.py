@@ -23,6 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     """Set up the sensor platform."""
     coordinator_1sec = hass.data[DOMAIN][config_entry.entry_id]["coordinator_1sec"]
+    coordinator_1sec_amps = hass.data[DOMAIN][config_entry.entry_id]["coordinator_1sec_amps"]
     coordinator_1min = hass.data[DOMAIN][config_entry.entry_id]["coordinator_1min"]
     coordinator_1mon = hass.data[DOMAIN][config_entry.entry_id]["coordinator_1mon"]
     coordinator_day_sensor = hass.data[DOMAIN][config_entry.entry_id][
@@ -35,6 +36,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         async_add_entities(
             CurrentVuePowerSensor(coordinator_1sec, id)
             for _, id in enumerate(coordinator_1sec.data)
+        )
+
+    if coordinator_1sec_amps:
+        async_add_entities(
+            CurrentVueAmpsSensor(coordinator_1sec_amps, id)
+            for _, id in enumerate(coordinator_1sec_amps.data)
         )
 
     if coordinator_1min:
@@ -166,3 +173,53 @@ class CurrentVuePowerSensor(CoordinatorEntity, SensorEntity):
             Scale.SECOND.value,
             Scale.MINUTES_15.value,
         )
+
+
+class CurrentVueAmpsSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Vue Sensor's current amperage."""
+
+    def __init__(self, coordinator, identifier) -> None:
+        """Pass coordinator to CoordinatorEntity."""
+        super().__init__(coordinator)
+        self._id = identifier
+        self._scale: str = coordinator.data[identifier]["scale"]
+        device_gid: int = coordinator.data[identifier]["device_gid"]
+        channel_num: str = coordinator.data[identifier]["channel_num"]
+        self._device: VueDevice = coordinator.data[identifier]["info"]
+        self._channel: Optional[VueDeviceChannel] = None
+        if self._device is not None:
+            for channel in self._device.channels:
+                if channel.channel_num == channel_num:
+                    self._channel = channel
+                    break
+        if self._channel is None:
+            _LOGGER.warning(
+                "No channel found for device_gid %s and channel_num %s",
+                device_gid,
+                channel_num,
+            )
+            raise RuntimeError(
+                f"No channel found for device_gid {device_gid} and channel_num {channel_num}"
+            )
+        device_name = self._device.device_name
+        if self._channel.name and self._channel.name not in [
+            "Main",
+            "Balance",
+            "TotalUsage",
+            "MainsToGrid",
+            "MainsFromGrid",
+        ]:
+            device_name = self._channel.name
+        self._name = f"{device_name} {channel_num} {self._scale} Amps"
+
+        self._attr_name = self._name
+        self._attr_native_unit_of_measurement = "A"
+        self._attr_device_class = SensorDeviceClass.CURRENT
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self):
+        """Return the current amperage."""
+        if self._id in self.coordinator.data:
+            return self.coordinator.data[self._id].get("amperage")
+        return None

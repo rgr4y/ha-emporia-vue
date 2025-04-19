@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 
-from .const import DOMAIN, ENABLE_1S, ENABLE_1D, ENABLE_1M, ENABLE_1MON
+from .const import DOMAIN, ENABLE_1S, ENABLE_1S_AMPS, ENABLE_1D, ENABLE_1M, ENABLE_1MON
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_EMAIL): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(ENABLE_1S, default=False): bool,
+        vol.Optional(ENABLE_1S_AMPS, default=False): bool,
         vol.Optional(ENABLE_1M, default=True): bool,
         vol.Optional(ENABLE_1D, default=True): bool,
         vol.Optional(ENABLE_1MON, default=True): bool,
@@ -59,6 +60,7 @@ async def validate_input(hass: core.HomeAssistant, data):
         "title": f"Customer {hub.vue.customer.customer_gid}",
         "gid": f"{hub.vue.customer.customer_gid}",
         ENABLE_1S: data[ENABLE_1S],
+        ENABLE_1S_AMPS: data[ENABLE_1S_AMPS],
         ENABLE_1M: data[ENABLE_1M],
         ENABLE_1D: data[ENABLE_1D],
         ENABLE_1MON: data[ENABLE_1MON],
@@ -133,6 +135,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         ENABLE_1S, default=self.config_entry.options.get(ENABLE_1S)
+                    ): bool,
+                    vol.Optional(
+                        ENABLE_1S_AMPS, default=self.config_entry.options.get(ENABLE_1S_AMPS)
                     ): bool,
                     vol.Optional(
                         ENABLE_1M, default=self.config_entry.options.get(ENABLE_1M)
