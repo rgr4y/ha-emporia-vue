@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 
-from .const import DOMAIN, ENABLE_1S, ENABLE_1D, ENABLE_1M, ENABLE_1MON
+from .const import DOMAIN, ENABLE_1S, ENABLE_1D, ENABLE_1M, ENABLE_1MON, ONLY_MAINS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(ENABLE_1M, default=True): bool,
         vol.Optional(ENABLE_1D, default=True): bool,
         vol.Optional(ENABLE_1MON, default=True): bool,
+        vol.Optional(ONLY_MAINS, default=False): bool,
     }
 )
 
@@ -62,6 +63,7 @@ async def validate_input(hass: core.HomeAssistant, data):
         ENABLE_1M: data[ENABLE_1M],
         ENABLE_1D: data[ENABLE_1D],
         ENABLE_1MON: data[ENABLE_1MON],
+        ONLY_MAINS: data[ONLY_MAINS],
     }
 
 
@@ -132,16 +134,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Optional(
-                        ENABLE_1S, default=self.config_entry.options.get(ENABLE_1S)
+                        ENABLE_1S, default=self.config_entry.options.get(ENABLE_1S, False)
                     ): bool,
                     vol.Optional(
-                        ENABLE_1M, default=self.config_entry.options.get(ENABLE_1M)
+                        ENABLE_1M, default=self.config_entry.options.get(ENABLE_1M, True)
                     ): bool,
                     vol.Optional(
-                        ENABLE_1D, default=self.config_entry.options.get(ENABLE_1D)
+                        ENABLE_1D, default=self.config_entry.options.get(ENABLE_1D, True)
                     ): bool,
                     vol.Optional(
-                        ENABLE_1MON, default=self.config_entry.options.get(ENABLE_1MON)
+                        ENABLE_1MON, default=self.config_entry.options.get(ENABLE_1MON, True)
+                    ): bool,
+                    vol.Optional(
+                        ONLY_MAINS, default=self.config_entry.options.get(ONLY_MAINS, False)
                     ): bool,
                 }
             ),

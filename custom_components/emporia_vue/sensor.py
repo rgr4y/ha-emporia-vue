@@ -14,12 +14,17 @@ from homeassistant.const import UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, ONLY_MAINS
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# def setup_platform(hass, config, add_entities, discovery_info=None):
+def is_main_circuit(channel_num):
+    _LOGGER.warning("channel_num: %s", channel_num)
+    """Check if the channel is a main circuit."""
+    return channel_num in ["1,2,3"]
+
+
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     """Set up the sensor platform."""
     coordinator_1sec = hass.data[DOMAIN][config_entry.entry_id]["coordinator_1sec"]
@@ -29,30 +34,36 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         "coordinator_day_sensor"
     ]
 
+    only_mains = config_entry.options.get(ONLY_MAINS, False)
+
     _LOGGER.info(hass.data[DOMAIN][config_entry.entry_id])
 
     if coordinator_1sec:
         async_add_entities(
             CurrentVuePowerSensor(coordinator_1sec, id)
-            for _, id in enumerate(coordinator_1sec.data)
+            for id, data in coordinator_1sec.data.items()
+            if not only_mains or is_main_circuit(data["channel_num"])
         )
 
     if coordinator_1min:
         async_add_entities(
             CurrentVuePowerSensor(coordinator_1min, id)
-            for _, id in enumerate(coordinator_1min.data)
+            for id, data in coordinator_1min.data.items()
+            if not only_mains or is_main_circuit(data["channel_num"])
         )
 
     if coordinator_1mon:
         async_add_entities(
             CurrentVuePowerSensor(coordinator_1mon, id)
-            for _, id in enumerate(coordinator_1mon.data)
+            for id, data in coordinator_1mon.data.items()
+            if not only_mains or is_main_circuit(data["channel_num"])
         )
 
     if coordinator_day_sensor:
         async_add_entities(
             CurrentVuePowerSensor(coordinator_day_sensor, id)
-            for _, id in enumerate(coordinator_day_sensor.data)
+            for id, data in coordinator_day_sensor.data.items()
+            if not only_mains or is_main_circuit(data["channel_num"])
         )
 
 

@@ -8,7 +8,8 @@
           "enable_1s": "Two Second Sensor (Amps)",
           "enable_1m": "One Minute Sensor",
           "enable_1d": "One Day Sensor",
-          "enable_1mon": "One Month Sensor"
+          "enable_1mon": "One Month Sensor",
+          "only_mains": "Only Mains Circuits (A, B, C/1, 2, 3)"
         }
       }
     },
@@ -28,7 +29,8 @@
           "enable_1s": "Two Second Sensor (Amps)",
           "enable_1m": "One Minute Sensor",
           "enable_1d": "One Day Sensor",
-          "enable_1mon": "One Month Sensor"
+          "enable_1mon": "One Month Sensor",
+          "only_mains": "Only Mains Circuits (A, B, C/1, 2, 3)"
         }
       }
     }
