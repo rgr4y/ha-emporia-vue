@@ -19,6 +19,7 @@ CONFIG_FLOW_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_EMAIL): cv.string,
         vol.Required(CONF_PASSWORD): cv.string,
+        vol.Optional(ENABLE_1S, default=False): cv.boolean,
         vol.Optional(ENABLE_1M, default=True): cv.boolean,
         vol.Optional(ENABLE_1D, default=True): cv.boolean,
         vol.Optional(ENABLE_1MON, default=True): cv.boolean,

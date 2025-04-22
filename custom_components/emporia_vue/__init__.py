@@ -211,7 +211,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return LAST_DAY_DATA
 
         coordinator_1sec = None
-        if ENABLE_1S not in options_data or options_data[ENABLE_1S]:
+        if ENABLE_1S not in entry_data or entry_data[ENABLE_1S]:
             coordinator_1sec = DataUpdateCoordinator(
                 hass,
                 _LOGGER,
@@ -219,12 +219,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 name="sensor",
                 update_method=async_update_data_1sec,
                 # Polling interval. Will only be polled if there are subscribers.
-                update_interval=timedelta(seconds=1),
+                update_interval=timedelta(seconds=2),
             )
             await coordinator_1sec.async_config_entry_first_refresh()
             _LOGGER.info("1sec Update data: %s", coordinator_1sec.data)
         coordinator_1min = None
-        if ENABLE_1M not in options_data or options_data[ENABLE_1M]:
+        if ENABLE_1M not in entry_data or entry_data[ENABLE_1M]:
             coordinator_1min = DataUpdateCoordinator(
                 hass,
                 _LOGGER,
@@ -236,8 +236,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             await coordinator_1min.async_config_entry_first_refresh()
             _LOGGER.debug("1min Update data: %s", coordinator_1min.data)
+        coordinator_day_sensor = None
+        if ENABLE_1D not in entry_data or entry_data[ENABLE_1D]:
+            coordinator_day_sensor = DataUpdateCoordinator(
+                hass,
+                _LOGGER,
+                # Name of the data. For logging purposes.
+                name="sensor",
+                update_method=async_update_day_sensors,
+                # Polling interval. Will only be polled if there are subscribers.
+                update_interval=timedelta(minutes=1),
+            )
+            await coordinator_day_sensor.async_config_entry_first_refresh()
         coordinator_1mon = None
-        if ENABLE_1MON not in options_data or options_data[ENABLE_1MON]:
+        if ENABLE_1MON not in entry_data or entry_data[ENABLE_1MON]:
             coordinator_1mon = DataUpdateCoordinator(
                 hass,
                 _LOGGER,
@@ -249,20 +261,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
             await coordinator_1mon.async_config_entry_first_refresh()
             _LOGGER.debug("1mon Update data: %s", coordinator_1mon.data)
-
-        coordinator_day_sensor = None
-        if ENABLE_1D not in options_data or options_data[ENABLE_1D]:
-            coordinator_day_sensor = DataUpdateCoordinator(
-                hass,
-                _LOGGER,
-                # Name of the data. For logging purposes.
-                name="sensor",
-                update_method=async_update_day_sensors,
-                # Polling interval. Will only be polled if there are subscribers.
-                update_interval=timedelta(minutes=1),
-            )
-            await coordinator_day_sensor.async_config_entry_first_refresh()
-
         # Setup custom services
         async def handle_set_charger_current(call) -> None:
             """Handle setting the EV Charger current."""

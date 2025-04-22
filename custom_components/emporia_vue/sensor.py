@@ -41,8 +41,8 @@ async def async_setup_entry(
 
     if coordinator_1sec:
         async_add_entities(
-            CurrentVuePowerSensor(coordinator_1sec, id)
-            for _, id in enumerate(coordinator_1sec.data)
+            CurrentVuePowerSensor(coordinator_1sec, identifier)
+            for _, identifier in enumerate(coordinator_1sec.data)
         )
 
     if coordinator_1min:
@@ -173,6 +173,8 @@ class CurrentVuePowerSensor(CoordinatorEntity, SensorEntity):  # type: ignore
         """Return a human readable scale."""
         if self._scale == Scale.MINUTE.value:
             return "Minute Average"
+        if self._scale == Scale.SECOND.value:
+            return "Second (Instant)"
         if self._scale == Scale.DAY.value:
             return "Today"
         if self._scale == Scale.MONTH.value:

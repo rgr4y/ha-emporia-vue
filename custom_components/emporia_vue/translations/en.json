@@ -21,6 +21,7 @@
             },
             "reconfigure": {
                 "data": {
+                    "enable_1s": "Power Second Sensor",
                     "enable_1d": "Energy Today Sensor",
                     "enable_1m": "Power Minute Average Sensor",
                     "enable_1mon": "Energy This Month Sensor",
@@ -30,6 +31,7 @@
             "user": {
                 "data": {
                     "email": "Email",
+                    "enable_1s": "Power Second Sensor",
                     "enable_1d": "Energy Today Sensor",
                     "enable_1m": "Power Minute Average Sensor",
                     "enable_1mon": "Energy This Month Sensor",
